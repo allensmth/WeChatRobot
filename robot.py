@@ -6,17 +6,11 @@ import time
 import xml.etree.ElementTree as ET
 from queue import Empty
 from threading import Thread
-from base.func_zhipu import ZhiPu
 
 from wcferry import Wcf, WxMsg
 
-from base.func_bard import BardAssistant
-from base.func_chatglm import ChatGLM
-from base.func_chatgpt import ChatGPT
 from base.func_chengyu import cy
 from base.func_news import News
-from base.func_tigerbot import TigerBot
-from base.func_xinghuo_web import XinghuoWeb
 from configuration import Config
 from constants import ChatType
 from job_mgmt import Job
@@ -34,41 +28,7 @@ class Robot(Job):
         self.LOG = logging.getLogger("Robot")
         self.wxid = self.wcf.get_self_wxid()
         self.allContacts = self.getAllContacts()
-
-        if ChatType.is_in_chat_types(chat_type):
-            if chat_type == ChatType.TIGER_BOT.value and TigerBot.value_check(self.config.TIGERBOT):
-                self.chat = TigerBot(self.config.TIGERBOT)
-            elif chat_type == ChatType.CHATGPT.value and ChatGPT.value_check(self.config.CHATGPT):
-                self.chat = ChatGPT(self.config.CHATGPT)
-            elif chat_type == ChatType.XINGHUO_WEB.value and XinghuoWeb.value_check(self.config.XINGHUO_WEB):
-                self.chat = XinghuoWeb(self.config.XINGHUO_WEB)
-            elif chat_type == ChatType.CHATGLM.value and ChatGLM.value_check(self.config.CHATGLM):
-                self.chat = ChatGLM(self.config.CHATGLM)
-            elif chat_type == ChatType.BardAssistant.value and BardAssistant.value_check(self.config.BardAssistant):
-                self.chat = BardAssistant(self.config.BardAssistant)
-            elif chat_type == ChatType.ZhiPu.value and ZhiPu.value_check(self.config.ZhiPu):
-                self.chat = ZhiPu(self.config.ZhiPu)
-            else:
-                self.LOG.warning("未配置模型")
-                self.chat = None
-        else:
-            if TigerBot.value_check(self.config.TIGERBOT):
-                self.chat = TigerBot(self.config.TIGERBOT)
-            elif ChatGPT.value_check(self.config.CHATGPT):
-                self.chat = ChatGPT(self.config.CHATGPT)
-            elif XinghuoWeb.value_check(self.config.XINGHUO_WEB):
-                self.chat = XinghuoWeb(self.config.XINGHUO_WEB)
-            elif ChatGLM.value_check(self.config.CHATGLM):
-                self.chat = ChatGLM(self.config.CHATGLM)
-            elif BardAssistant.value_check(self.config.BardAssistant):
-                self.chat = BardAssistant(self.config.BardAssistant)
-            elif ZhiPu.value_check(self.config.ZhiPu):
-                self.chat = ZhiPu(self.config.ZhiPu)
-            else:
-                self.LOG.warning("未配置模型")
-                self.chat = None
-
-        self.LOG.info(f"已选择: {self.chat}")
+        self.chat = None
 
     @staticmethod
     def value_check(args: dict) -> bool:
@@ -111,24 +71,14 @@ class Robot(Job):
         return status
 
     def toChitchat(self, msg: WxMsg) -> bool:
-        """闲聊，接入 ChatGPT
+        """闲聊
         """
-        if not self.chat:  # 没接 ChatGPT，固定回复
-            rsp = "你@我干嘛？"
-        else:  # 接了 ChatGPT，智能回复
-            q = re.sub(r"@.*?[\u2005|\s]", "", msg.content).replace(" ", "")
-            rsp = self.chat.get_answer(q, (msg.roomid if msg.from_group() else msg.sender))
-
-        if rsp:
-            if msg.from_group():
-                self.sendTextMsg(rsp, msg.roomid, msg.sender)
-            else:
-                self.sendTextMsg(rsp, msg.sender)
-
-            return True
+        rsp = "你@我干嘛？"
+        if msg.from_group():
+            self.sendTextMsg(rsp, msg.roomid, msg.sender)
         else:
-            self.LOG.error(f"无法从 ChatGPT 获得答案")
-            return False
+            self.sendTextMsg(rsp, msg.sender)
+        return True
 
     def processMsg(self, msg: WxMsg) -> None:
         """当接收到消息的时候，会调用本方法。如果不实现本方法，则打印原始消息。
